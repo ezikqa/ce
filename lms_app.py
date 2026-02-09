@@ -1,5 +1,9 @@
 import streamlit as st
 import time
+import json
+import datetime
+import urllib.parse
+import extra_streamlit_components as stx
 
 # ==========================================
 # ИНСТРУКЦИЯ ПО УСТАНОВКЕ И ЗАПУСКУ
@@ -18,6 +22,89 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# === Cookie Manager & Persistence ===
+# === Cookie Manager & Persistence ===
+cookie_manager = stx.CookieManager(key="init")
+
+def save_progress():
+    progress = {
+        'user_name': st.session_state.get('user_name', "Гость"),
+        'current_level': st.session_state.get('current_level', 0),
+        'score': st.session_state.get('score', 0),
+        'completed_modules': list(st.session_state.get('completed_modules', [])),
+        'quiz_1_score': st.session_state.get('quiz_1_score', 0),
+        'quiz_2_score': st.session_state.get('quiz_2_score', 0),
+        'quiz_3_score': st.session_state.get('quiz_3_score', 0),
+        'quiz_4_score': st.session_state.get('quiz_4_score', 0),
+    }
+    # Expires in 30 days
+    expires = datetime.datetime.now() + datetime.timedelta(days=30)
+    cookie_manager.set('lms_progress', json.dumps(progress), key="save_progress", expires_at=expires)
+
+# === Main Loop Save Check ===
+if st.session_state.get('needs_save', False):
+    save_progress()
+    st.session_state['needs_save'] = False
+    # st.toast("Сохранение...", icon="💾")
+
+# === Load Progress from Cookies ===
+# === Load Progress from Cookies ===
+if 'data_loaded' not in st.session_state:
+    # Try to get cookies. CookieManager might need a rerun to sync.
+    cookies = cookie_manager.get_all()
+    
+    # If cookies are found (meaning the component has loaded), proceed
+    if cookies is not None:
+        # Check if our cookie is there
+        if 'lms_progress' in cookies:
+            try:
+                raw_cookie = cookies['lms_progress']
+                if isinstance(raw_cookie, dict):
+                    data = raw_cookie
+                else:
+                    # Try decoding if it looks url-encoded
+                    if isinstance(raw_cookie, str) and raw_cookie.startswith('%'):
+                        raw_cookie = urllib.parse.unquote(raw_cookie)
+                    data = json.loads(raw_cookie)
+                st.session_state['user_name'] = data.get('user_name', "Гость")
+                st.session_state['current_level'] = data.get('current_level', 0)
+                st.session_state['score'] = data.get('score', 0)
+                st.session_state['completed_modules'] = set(data.get('completed_modules', []))
+                st.session_state['quiz_1_score'] = data.get('quiz_1_score', 0)
+                st.session_state['quiz_2_score'] = data.get('quiz_2_score', 0)
+                st.session_state['quiz_3_score'] = data.get('quiz_3_score', 0)
+                st.session_state['quiz_4_score'] = data.get('quiz_4_score', 0)
+                # st.toast(f"Добро пожаловать, {data.get('user_name')}!", icon="✅")
+            except Exception as e:
+                st.error(f"Error loading cookies: {e}")
+            
+            # Successfully loaded our cookie
+            st.session_state['data_loaded'] = True
+        else:
+            # Cookies exist but not ours. New user? Or not synced yet?
+            # Unified retry logic: Keep trying until MAX_RETRIES or lms_progress found.
+            retry_count = st.session_state.get('cookie_retry', 0)
+            if retry_count < 15:
+                # st.write(f"Ожидание профиля... (Попытка {retry_count+1}/15)")
+                time.sleep(0.5)
+                st.session_state['cookie_retry'] = retry_count + 1
+                st.rerun()
+            else:
+                 # Cookies really don't have lms_progress. New user.
+                 st.session_state['data_loaded'] = True
+    else:
+        # Cookies are None. Component hasn't synced.
+        retry_count = st.session_state.get('cookie_retry', 0)
+        if retry_count < 15:
+             with st.spinner(f"Загрузка профиля... (Попытка {retry_count+1}/15)"):
+                 time.sleep(0.5)
+             st.session_state['cookie_retry'] = retry_count + 1
+             st.rerun()
+        else:
+             # Cookies really empty. Set default.
+             st.session_state['data_loaded'] = True
+
 
 # === Session State: Инициализация состояния ===
 if 'user_name' not in st.session_state:
@@ -50,6 +137,7 @@ def navigate_to(page, level=None):
     if level is not None:
         st.session_state['current_level'] = max(st.session_state['current_level'], level)
     st.session_state['page_selection'] = page
+    st.session_state['needs_save'] = True
 
 # === Сайдбар (Навигация) ===
 st.sidebar.title("LMS Навигация")
@@ -93,6 +181,7 @@ selection = st.sidebar.radio("Перейти к разделу:", page_options, 
 # Отображение прогресса в сайдбаре
 st.sidebar.markdown("---")
 st.sidebar.write(f"Текущий счет: {st.session_state['score']} XP")
+st.sidebar.write(f"Текущий счет: {st.session_state['score']} XP")
 st.sidebar.write(f"Открыто модулей: {st.session_state['current_level']}/5")
 
 
@@ -110,7 +199,9 @@ def show_profile():
     name = st.text_input("Введите ваше имя", value=st.session_state['user_name'])
     if st.button("Сохранить"):
         st.session_state['user_name'] = name
+        st.session_state['needs_save'] = True
         st.success(f"Имя обновлено: {name}")
+        st.rerun()
         
     st.write("---")
     st.subheader("Ваш прогресс")
@@ -310,6 +401,7 @@ def show_module_1():
              st.session_state['completed_modules'].add(1)
              if st.session_state['current_level'] < 2:
                  st.session_state['current_level'] = 2
+             st.session_state['needs_save'] = True
         
         if st.button("Перейти к Модулю 2", on_click=navigate_to, args=("Модуль 2: Железо",)):
             pass
@@ -571,6 +663,7 @@ def show_module_2():
              st.session_state['completed_modules'].add(2)
              if st.session_state['current_level'] < 3:
                  st.session_state['current_level'] = 3
+             st.session_state['needs_save'] = True
         
         if st.button("Перейти к Модулю 3", on_click=navigate_to, args=("Модуль 3: Сети",)):
             pass
@@ -810,6 +903,7 @@ Address:  192.168.1.1
              st.session_state['completed_modules'].add(3)
              if st.session_state['current_level'] < 4:
                  st.session_state['current_level'] = 4
+             st.session_state['needs_save'] = True
         
         if st.button("Перейти к Модулю 4", on_click=navigate_to, args=("Модуль 4: Веб",)):
             pass
@@ -1056,6 +1150,7 @@ Response: {"error": "Critical database failure"}.""")
              st.session_state['completed_modules'].add(4)
              if st.session_state['current_level'] < 5:
                  st.session_state['current_level'] = 5
+             st.session_state['needs_save'] = True
         
         if st.button("Перейти к Финальному экзамену", on_click=navigate_to, args=("Финальный экзамен",)):
             pass
@@ -1096,6 +1191,7 @@ def show_final_exam():
             if 3 not in st.session_state['completed_modules']:
                 st.session_state['score'] += 50
                 st.session_state['completed_modules'].add(3)
+                st.session_state['needs_save'] = True
                 st.balloons()
         else:
             st.error("Неверный ответ. Функция должна возвращать значение.")
