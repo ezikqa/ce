@@ -37,6 +37,9 @@ def save_progress():
         'quiz_2_score': st.session_state.get('quiz_2_score', 0),
         'quiz_3_score': st.session_state.get('quiz_3_score', 0),
         'quiz_4_score': st.session_state.get('quiz_4_score', 0),
+        'quiz_5_score': st.session_state.get('quiz_5_score', 0),
+        'quiz_6_score': st.session_state.get('quiz_6_score', 0),
+        'final_exam_score': st.session_state.get('final_exam_score', 0),
     }
     # Expires in 30 days
     expires = datetime.datetime.now() + datetime.timedelta(days=30)
@@ -75,6 +78,9 @@ if 'data_loaded' not in st.session_state:
                 st.session_state['quiz_2_score'] = data.get('quiz_2_score', 0)
                 st.session_state['quiz_3_score'] = data.get('quiz_3_score', 0)
                 st.session_state['quiz_4_score'] = data.get('quiz_4_score', 0)
+                st.session_state['quiz_5_score'] = data.get('quiz_5_score', 0)
+                st.session_state['quiz_6_score'] = data.get('quiz_6_score', 0)
+                st.session_state['final_exam_score'] = data.get('final_exam_score', 0)
                 # st.toast(f"Добро пожаловать, {data.get('user_name')}!", icon="✅")
             except Exception as e:
                 st.error(f"Error loading cookies: {e}")
@@ -131,6 +137,18 @@ if 'module_4_step' not in st.session_state:
     st.session_state['module_4_step'] = 0
 if 'quiz_4_score' not in st.session_state:
     st.session_state['quiz_4_score'] = 0
+if 'module_5_step' not in st.session_state:
+    st.session_state['module_5_step'] = 0
+if 'quiz_5_score' not in st.session_state:
+    st.session_state['quiz_5_score'] = 0
+if 'module_6_step' not in st.session_state:
+    st.session_state['module_6_step'] = 0
+if 'quiz_6_score' not in st.session_state:
+    st.session_state['quiz_6_score'] = 0
+if 'final_exam_step' not in st.session_state:
+    st.session_state['final_exam_step'] = 0
+if 'final_exam_score' not in st.session_state:
+    st.session_state['final_exam_score'] = 0
 
 # === Helper Functions ===
 def navigate_to(page, level=None):
@@ -149,7 +167,9 @@ pages = {
     "Модуль 2: Железо": "module_2",
     "Модуль 3: Сети": "module_3",
     "Модуль 4: Веб": "module_4",
-    "Финальный экзамен": "final_exam"
+    "Модуль 5: SQL & Logs": "module_5",
+    "Модуль 6: Финальный Босс (Simulation)": "module_6",
+    "Итоговый Экзамен (Grand Final)": "final_exam"
 }
 
 # Логика доступа к страницам
@@ -164,8 +184,13 @@ available_pages = list(pages.keys())
 # И так далее.
 page_options = list(pages.keys())[:st.session_state['current_level'] + 1]
 
+# Инициализация выбора страницы в session_state, если её нет или она недоступна
+# Если имя пользователя "admin" — показываем все модули (для проверки)
+if st.session_state.get('user_name', '').lower().strip() == 'admin':
+    page_options = list(pages.keys())
+
 # Если пользователь прошел все, показываем всё
-if st.session_state['current_level'] >= 5:
+if st.session_state['current_level'] >= 8:
     page_options = list(pages.keys())
 
 # Инициализация выбора страницы в session_state, если её нет или она недоступна
@@ -187,7 +212,7 @@ st.sidebar.write(f"Открыто модулей: {st.session_state['current_lev
 
 # === Главная страница: Прогресс-бар ===
 # Отображается на всех страницах сверху для наглядности
-progress_value = min(st.session_state['current_level'] / 5, 1.0)
+progress_value = min(st.session_state['current_level'] / 8, 1.0)
 st.progress(progress_value)
 
 
@@ -1152,7 +1177,7 @@ Response: {"error": "Critical database failure"}.""")
                  st.session_state['current_level'] = 5
              st.session_state['needs_save'] = True
         
-        if st.button("Перейти к Финальному экзамену", on_click=navigate_to, args=("Финальный экзамен",)):
+        if st.button("Перейти к Модулю 5", on_click=navigate_to, args=("Модуль 5: SQL & Logs",)):
             pass
 
     # Список слайдов
@@ -1174,27 +1199,603 @@ Response: {"error": "Critical database failure"}.""")
                 st.session_state['module_4_step'] += 1
                 st.rerun()
 
-def show_final_exam():
-    st.write("Поздравляем! Вы дошли до финала.")
+def show_module_5():
+    st.title("🗄️ Модуль 5: Работа с данными и лагами (SQL & Linux)")
+
+    # --- Слайды Module 5 ---
+    def slide_1():
+        st.header("БЛОК 1: Теория и Погружение")
+        st.subheader("1. Логи: \"Черный ящик самолета\"")
+        st.markdown("""
+        **Суть за 30 секунд (Аналогия):**  
+        Представь, что сервер — это охранник, который записывает **каждое** действие в толстую тетрадь.
+        
+        *   "14:00 — Пришел Вася."
+        *   "14:05 — Вася попытался открыть дверь 'Склад'."
+        *   "14:05 — Ошибка: У Васи нет ключа."
+        
+        Эта тетрадь и есть **Лог (Log file)**. Когда пользователь кричит "Не работает!", ты не веришь ему на слово. Ты открываешь тетрадь и смотришь, что произошло на самом деле.
+
+        **Tech Deep Dive:**
+        *   **Access Log (Nginx/Apache):** Кто пришел, какую страницу открыл, какой код ответа получил (200 или 404).
+        *   **Error Log:** Что сломалось. Тут живут ошибки 500 и "падения" программ.
+        *   **Application Log:** Логи самой программы (например, "Пользователь нажал кнопку 'Купить'").
+        """)
+        
+        st.divider()
+        st.subheader("2. Базы данных и SQL: \"Гигантский Excel\"")
+        st.markdown("""
+        **Суть за 30 секунд (Аналогия):**  
+        Представь Excel.
+        
+        *   Файл — это **База Данных (Database)**.
+        *   Лист (вкладка) — это **Таблица (Table)**. Например, таблица `Users`.
+        *   Столбец — это **Поле (Column)**. (Email, Имя).
+        *   Строка — это **Запись (Row)**. (Конкретный человек Иван).
+
+        **SQL** — язык, чтобы попросить Excel показать данные. Ты пишешь записку: "Покажи мне Ивана".
+        """)
+
+    def slide_2():
+        st.header("БЛОК 2: Памятка по SQL (Cheat Sheet)")
+        st.info("Сохрани себе эту схему. Это 'скелет' любого запроса.")
+        
+        st.markdown("""
+        ### Анатомия запроса:
+        1.  **ЧТО** показать? -> `SELECT`
+        2.  **ОТКУДА** взять? -> `FROM`
+        3.  **КАКОЙ** именно? -> `WHERE`
+        
+        ### Пример: "Найди телефон клиента с ID 55"
+        ```sql
+        SELECT phone       -- Покажи колонку "Телефон"
+        FROM clients       -- Из таблицы "Клиенты"
+        WHERE id = 55      -- Только у кого номер 55
+        LIMIT 1            -- (Опционально) Только одну штуку
+        ```
+        
+        **Важные знаки:**
+        *   `*` (Звездочка) — "ВСЕ колонки".
+        *   `=` — точное совпадение.
+        *   `'text'` — текст в кавычках. Цифры без.
+        """)
     
-    st.write(f"Уважаемый {st.session_state['user_name']}, ответьте на последний вопрос.")
+    def slide_3():
+        st.header("БЛОК 3: Видео")
+        tab1, tab2 = st.tabs(["SQL за 20 мин", "Логи Linux"])
+        with tab1:
+            st.video("https://www.youtube.com/watch?v=bv5UqdWm-5k")
+        with tab2:
+            st.video("https://www.youtube.com/watch?v=JQXM4ArzyU4")
+
+    def slide_4():
+        st.header("БЛОК 3: Визуализация (Linux Консоль)")
+        st.code("""
+        $ cat server.log          # Вывалить всё (как мусорное ведро)
+        $ tail -f server.log      # Смотреть "Прямой эфир" (новое снизу)
+        $ grep "Error" server.log # Магические очки (только строки с Error)
+        """, language="bash")
+        st.caption("Представь черное окно терминала. Это твои основные инструменты.")
+
+    def slide_5():
+        st.header("БЛОК 4: Тренажер (SQL Academy)")
+        st.markdown("""
+        Мы переходим к практике.
+        
+        1.  Перейди по ссылке: [SQL Academy Trainer](https://sql-academy.org/ru/trainer)
+        2.  Выберите **"Задание 1"**.
+        3.  Задача: "Вывести имена (name) всех пассажиров из таблицы Passenger".
+        
+        **Твой код:**
+        ```sql
+        SELECT name FROM Passenger
+        ```
+        
+        *Попробуй также решить Задание 6 самостоятельно.*
+        """)
+        st.link_button("Открыть SQL Academy", "https://sql-academy.org/ru/trainer")
+
+    def slide_6():
+        st.header("БЛОК 5: Логи в Linux (Симулятор)")
+        st.markdown("""
+        **Сценарий:**  
+        Ты подключился к серверу. Есть файл `server.log` (10 ГБ).  
+        Нужно найти ошибку, которая произошла **только что**, когда пользователь нажал кнопку.
+        
+        **Вопрос:** Какую команду выберешь?
+        """)
+        
+        q = st.radio("Твой выбор:", [
+            "A) cat server.log",
+            "B) grep \"Error\" server.log",
+            "C) tail -f server.log"
+        ])
+        
+        if st.button("Применить"):
+            if "tail" in q:
+                st.success("Идеально! Ты видишь новые строки в реальном времени.")
+            elif "cat" in q:
+                st.error("Терминал завис. 10 ГБ текста залили экран.")
+            elif "grep" in q:
+                st.warning("Ты нашел тысячи ошибок за год. Сложно найти свежую.")
+
+    # --- QUIZ ---
+    def slide_quiz_1():
+        st.header("БЛОК 6: Проверка (Assessment)")
+        st.subheader("Вопрос 1 / 3")
+        st.markdown("**Нужно найти телефон пользователя 'Anna' в таблице `clients`.**")
+        
+        ans = st.radio("Ваш запрос:", [
+            "GET phone FROM clients IF name IS 'Anna'",
+            "SELECT phone FROM clients WHERE name = 'Anna'",
+            "SEARCH 'Anna' IN clients",
+            "SELECT * FROM clients"
+        ], key="q5_1")
+        
+        if st.button("Ответить"):
+            if "SELECT phone" in ans:
+                st.success("Верно! SELECT ... FROM ... WHERE ...")
+                st.session_state['quiz_5_score'] = 1
+                time.sleep(1)
+                st.session_state['module_5_step'] += 1
+                st.rerun()
+            else:
+                st.error("Ошибка синтаксиса.")
+
+    def slide_quiz_2():
+        st.header("БЛОК 6: Проверка (Assessment)")
+        st.subheader("Вопрос 2 / 3")
+        st.markdown("**Вы написали `SELECT * FROM orders` для поиска заказа №777. В чем опасность?**")
+        
+        ans = st.radio("Ответ:", [
+            "Забыли точку с запятой.",
+            "Забыли фильтр WHERE. Выгрузится миллион заказов.",
+            "Начальник увидит лишние данные."
+        ], key="q5_2")
+        
+        if st.button("Ответить"):
+            if "Забыли фильтр" in ans:
+                st.success("Точно! Всегда используй LIMIT или WHERE.")
+                st.session_state['quiz_5_score'] = 2
+                time.sleep(1)
+                st.session_state['module_5_step'] += 1
+                st.rerun()
+            else:
+                st.error("Нет, проблема в нагрузке.")
+
+    def slide_quiz_3():
+        st.header("БЛОК 6: Проверка (Assessment)")
+        st.subheader("Вопрос 3 / 3")
+        st.markdown("**Что делает `grep \"500 Internal Error\" access.log`?**")
+        
+        ans = st.radio("Ответ:", [
+            "Удаляет ошибки.",
+            "Находит и показывает строки с этой фразой.",
+            "Отправляет отчет разработчику."
+        ], key="q5_3")
+        
+        if st.button("Ответить"):
+            if "Находит" in ans:
+                st.success("Греп — это поиск!")
+                st.session_state['quiz_5_score'] = 3
+                st.session_state['module_5_step'] += 1
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("Grep только ищет.")
+
+    def slide_finish():
+        st.header("🏁 Финиш Модуля 5")
+        st.success(f"Вы прошли Модуль 5! Результат: {st.session_state.get('quiz_5_score', 0)}/3")
+        st.balloons()
+        
+        if 5 not in st.session_state['completed_modules']:
+             st.session_state['score'] += 500
+             st.session_state['completed_modules'].add(5)
+             if st.session_state['current_level'] < 6:
+                 st.session_state['current_level'] = 6
+             st.session_state['needs_save'] = True
+        
+        if st.button("Перейти к Модулю 6 (Final Boss)", on_click=navigate_to, args=("Модуль 6: Финальный Босс (Simulation)",)):
+            pass
+
+    slides = [slide_1, slide_2, slide_3, slide_4, slide_5, slide_6, slide_quiz_1, slide_quiz_2, slide_quiz_3, slide_finish]
+    current_step = st.session_state.get('module_5_step', 0)
     
-    with st.expander("Открыть задание экзамена", expanded=True):
-        st.write("Напишите функцию на Python, которая возвращает 'Hello World'.")
-        st.code("def hello():\n    return '...'", language='python')
-    
-    final_ans = st.radio("Что должна вернуть функция?", ["'Hello World'", "print('Hello World')", "Ничего (None)"])
-    
-    if st.button("Завершить курс"):
-        if final_ans == "'Hello World'":
-            st.success("🎉 Вы успешно завершили курс!")
-            if 3 not in st.session_state['completed_modules']:
-                st.session_state['score'] += 50
-                st.session_state['completed_modules'].add(3)
-                st.session_state['needs_save'] = True
+    if 0 <= current_step < len(slides):
+        slides[current_step]()
+        
+    if current_step < 6: # Theory slides
+        col_prev, col_next = st.columns([1, 10])
+        with col_prev:
+            if current_step > 0:
+                if st.button("⬅ Назад", key="m5_prev"):
+                    st.session_state['module_5_step'] -= 1
+                    st.rerun()
+        with col_next:
+            if st.button("Далее ➡", key="m5_next"):
+                st.session_state['module_5_step'] += 1
+                st.rerun()
+
+def show_module_6():
+    st.title("🔥 Модуль 6: Итоговый проект (Final Boss)")
+
+    def slide_1():
+        st.header("БЛОК 1: Теория (Управление хаосом)")
+        st.subheader("1. Приоритизация: \"Кого спасать первым?\"")
+        st.markdown("""
+        **Суть за 30 секунд:**  
+        Ты врач в приемном покое. К тебе привозят:
+        1. Человека с царапиной (кричит громко).
+        2. Человека с инфарктом (молчит).
+        
+        Кого лечишь? Того, кто **умрет без помощи** (Инфаркт). Даже если первый — сын мэра.
+        В IT это **Impact (Влияние) x Urgency (Срочность)**.
+        
+        **Матрица приоритетов:**
+        *   🔴 **P1 (Critical):** Не работает у ВСЕХ (упал сервер). Реакция: 15 мин.
+        *   🟠 **P2 (High):** Не работает у ОТДЕЛА (бухгалтерия стоит). Реакция: 1-2 часа.
+        *   🟡 **P3 (Medium):** Не работает у ОДНОГО. Реакция: 4-8 часов.
+        *   🟢 **P4 (Low):** "Хотелка". Реакция: 3-5 дней.
+        """)
+        
+        st.info("Ошибка новичка: Чинить принтер (P3), пока лежит сервер (P1), потому что принтер попросили раньше.")
+
+    def slide_2():
+        st.header("БЛОК 1: Теория (Часть 2)")
+        st.subheader("2. Handover (Передача смены)")
+        st.markdown("""
+        **Суть:** Ты бежишь эстафету. Если молча бросить палочку сменщику — он не поймет, куда бежать.
+        
+        **Что писать в Handover:**
+        1.  **Major Incidents:** Были ли массовые сбои?
+        2.  **Pending VIP:** Ждем ли ответа от директора?
+        3.  **Unfinished Business:** "Начал ставить Office, зависло на 90%".
+        """)
+        st.divider()
+        st.subheader("Мониторинг (Dashboard)")
+        st.markdown("""
+        Представь стену с телевизорами:
+        *   🟢 **Зеленые:** Всё ОК.
+        *   🟡 **Желтые:** Нагрузка растет.
+        *   🔴 **Красные пики (Alert):** Что-то упало!
+        """)
+
+    def slide_4(): # Video
+        st.header("БЛОК 2: Видео")
+        st.video("https://www.youtube.com/watch?v=SZbcMP9IcjI")
+        st.caption("ITIL Incident Management - как это бывает в жизни.")
+
+    def slide_5_sim():
+        st.header("💀 БЛОК 3: Итоговая Симуляция (Final Boss)")
+        st.error("ВНИМАНИЕ: Твой напарник заболел. Ты один. До конца смены 1 час.")
+        
+        st.markdown("""
+        ### 🚨 СИТУАЦИЯ (17:00):
+        
+        **Мониторинг:**
+        *   Auth Service: `Error Rate: 98%` (КРАСНЫЙ!)
+        *   Database: `CPU Load: 100%`
+        
+        **Чат:**
+        *   User1: "Не могу войти!"
+        *   Главбух: "Срочно! Платежи горят!"
+        *   +50 сообщений "Login failed".
+        
+        **Задачи:**
+        У тебя есть силы только на **3 действия**. Выбери их и расставь в ПРАВИЛЬНОМ порядке.
+        """)
+        
+        options = {
+            "A": "A. Отвечать каждому в чате ('чистите куки')",
+            "B": "B. Пойти менять картридж (заявка с утра)",
+            "C": "C. Написать в Общий чат 'Мы знаем, чиним.' (Оповещение)",
+            "D": "D. Позвонить Админам (L2/L3) 'У нас сбой!' (Эскалация)",
+            "E": "E. Перезагрузить свой ПК",
+            "F": "F. Сбросить пароль Главбуху вручную",
+            "G": "G. Повесить баннер 'Mass Outage' на портале"
+        }
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            act1 = st.selectbox("Действие 1", ["-"] + list(options.values()), key="sim_1")
+        with col2:
+            act2 = st.selectbox("Действие 2", ["-"] + list(options.values()), key="sim_2")
+        with col3:
+            act3 = st.selectbox("Действие 3", ["-"] + list(options.values()), key="sim_3")
+            
+        if st.button("🔥 ПРИМЕНИТЬ РЕШЕНИЕ"):
+            # Check logic: D -> C -> G
+            # Keys: D is index 3 in values (check careful string match or code)
+            is_d = "D. Позвонить" in act1
+            is_c = "C. Написать" in act2
+            is_g = "G. Повесить" in act3
+             
+            if is_d and is_c and is_g:
                 st.balloons()
+                st.success("""
+                **ИДЕАЛЬНО! ВЫ СПАСЛИ КОМПАНИЮ!** 🏆
+                
+                1.  **D (Эскалация):** Ты сразу разбудил Админов (только они могут поднять базу).
+                2.  **C (Оповещение):** Ты успокоил толпу в чате.
+                3.  **G (Баннер):** Ты остановил поток новых тикетов.
+                """)
+            else:
+                st.error("💥 СИСТЕМА РУХНУЛА. ТЫ УВОЛЕН (шутка). ПОПРОБУЙ ЕЩЕ РАЗ.")
+                # Feedback
+                if "A." in act1 or "A." in act2:
+                    st.warning("Ошибка: Отвечать каждому = утонуть в тикетах.")
+                if "B." in act1:
+                    st.warning("Ошибка: Меняешь картридж, пока здание горит?")
+                if "F." in act1:
+                    st.warning("Ошибка: Сброс пароля не поможет, если лежит сервис проверки паролей.")
+                if not is_d:
+                    st.warning("Ты не позвонил админам первым делом! Кто будет чинить сервер?")
+
+    def slide_quiz_1():
+        st.header("БЛОК 4: Итоговая проверка")
+        st.subheader("Вопрос 1 / 2")
+        st.markdown("**Смена заканчивается. Вы не успели решить проблему VIP. Ваши действия?**")
+        
+        ans = st.radio("Ответ:", [
+            "Закрыть тикет 'Не успел'.",
+            "Уйти молча.",
+            "Handover: Оставить открытым, написать заметку, передать сменщику."
+        ], key="q6_1")
+        
+        if st.button("Ответить"):
+            if "Handover" in ans:
+                st.success("Верно! Handover — гарантия непрерывности.")
+                st.session_state['quiz_6_score'] = 1
+                time.sleep(1)
+                st.session_state['module_6_step'] += 1
+                st.rerun()
+            else:
+                st.error("Нет. Бизнес не должен страдать из-за конца смены.")
+
+    def slide_quiz_2():
+        st.header("БЛОК 4: Итоговая проверка")
+        st.subheader("Вопрос 2 / 2")
+        st.markdown("**Почему при Массовом Сбое нельзя закрывать тикеты сразу?**")
+        
+        ans = st.radio("Ответ:", [
+            "Нужно починить проблему и закрыть всё разом (Parent Incident).",
+            "Для статистики.",
+            "Пользователи обидятся."
+        ], key="q6_2")
+        
+        if st.button("Ответить"):
+            if "Parent Incident" in ans:
+                st.success("Бинго! Экономим время.")
+                st.session_state['quiz_6_score'] = 2
+                time.sleep(1)
+                st.session_state['module_6_step'] += 1
+                st.rerun()
+            else:
+                st.error("Нет. Мы линкуем их в один родительский тикет.")
+
+    def slide_finish():
+        st.header("🏁 Финиш Модуля 6")
+        st.success(f"Вы прошли Симулятор! Результат: {st.session_state.get('quiz_6_score', 0)}/2")
+        st.balloons()
+        
+        if 6 not in st.session_state['completed_modules']:
+             st.session_state['score'] += 1000 # Boss bonus
+             st.session_state['completed_modules'].add(6)
+             if st.session_state['current_level'] < 7:
+                 st.session_state['current_level'] = 7
+             st.session_state['needs_save'] = True
+        
+        st.write("Теперь вы готовы к настоящей сертификации.")
+        if st.button("Перейти к Финальному экзамену (REAL)", on_click=navigate_to, args=("Итоговый Экзамен (Grand Final)",)):
+            pass
+
+    slides = [slide_1, slide_2, slide_4, slide_5_sim, slide_quiz_1, slide_quiz_2, slide_finish]
+    current_step = st.session_state.get('module_6_step', 0)
+    
+    if 0 <= current_step < len(slides):
+        slides[current_step]()
+        
+    # Navigation buttons (hide on Simulation slide index 3 to force interaction? No, allow skip for testing)
+    if current_step < 6: 
+        col_prev, col_next = st.columns([1, 10])
+        with col_prev:
+            if current_step > 0:
+                if st.button("⬅ Назад", key="m6_prev"):
+                    st.session_state['module_6_step'] -= 1
+                    st.rerun()
+        with col_next:
+            if st.button("Далее ➡", key="m6_next"):
+                st.session_state['module_6_step'] += 1
+                st.rerun()
+
+def show_final_exam():
+    st.title("🏆 ГРАНД-ФИНАЛ: ULTIMATE EDITION")
+
+    def slide_start():
+        st.header("Добро пожаловать на Экзамен")
+        st.write(f"Уважаемый {st.session_state['user_name']}, это финальное испытание.")
+        st.markdown("""
+        **Правила:**
+        *   30 вопросов (на самом деле 16 самых важных).
+        *   4 Уровня сложности: от "Блица" до "Ниндзя".
+        *   В конце вас ждет **Золотой Сертификат** (Knowledge Base) — шпаргалка на всю жизнь.
+        
+        *Готовы?*
+        """)
+
+    def slide_level_1():
+        st.header("Уровень 1: БЛИЦ ⚡ (База)")
+        with st.form("exam_l1"):
+            q1 = st.radio("В1. Что случится, если умрет DHCP?", ["Не откроется Google (DNS)", "Комп получит 169.254.x.x (APIPA)", "Украдут пароли"])
+            q2 = st.radio("В2. Разница Ping и Tracert?", ["Ping - жив/мертв, Tracert - маршрут", "Ping - локалка, Tracert - интернет", "Ping - TCP, Tracert - UDP"])
+            q3 = st.radio("В3. Файл пропал с рабочего стола после ребута (Тонкий клиент).", ["Вирус", "Временный профиль", "Сломался диск"])
+            q4 = st.radio("В4. Порт HTTPS?", ["80", "8080", "443", "22"])
+            q5 = st.radio("В5. Что такое SLA?", ["СисАдмин", "Таймер реакции (Штрафы)", "Анализ логов"])
+            
+            if st.form_submit_button("Зафиксировать ответы"):
+                score = 0
+                if "169.254" in q1: score += 1
+                if "Ping - жив" in q2: score += 1
+                if "Временный" in q3: score += 1
+                if "443" in q4: score += 1
+                if "Таймер" in q5: score += 1
+                
+                st.session_state['final_exam_score'] = score
+                st.session_state['final_exam_step'] += 1
+                st.rerun()
+
+    def slide_level_2():
+        st.header("Уровень 2: ДИАГНОСТ 🩺 (Сценарии)")
+        with st.form("exam_l2"):
+            q6 = st.radio("В6. BSOD (Синий экран). Порядок действий?", ["Переустановка -> Опрос -> Гугл", "Опрос -> Гугл -> Safe Mode -> Переустановка", "Safe Mode -> Переустановка -> Опрос"])
+            q7 = st.radio("В7. Высокий IOPS и CPU Wait на базе данных.", ["Нет места на диске", "Диск не справляется (тормозит)", "Процессор перегрелся"])
+            q8 = st.radio("В8. Не открывается bank.com (DNS ошибка, пинг 8.8.8.8 есть).", ["Сменить DNS / flushdns", "Перезагрузить роутер", "Переустановить браузер"])
+            q9 = st.radio("В9. Ошибка 502 Bad Gateway.", ["Проблема у клиента (интернет)", "Проблема на сервере (Шлюз не получил ответ от бэкенда)", "Сайт удален"])
+            q10 = st.radio("В10. 'FATAL: Too many connections'.", ["БД удалена", "Неверный пароль", "Лимит подключений исчерпан"])
+
+            if st.form_submit_button("Зафиксировать ответы"):
+                score = st.session_state.get('final_exam_score', 0)
+                if "Опрос -> Гугл" in q6: score += 1
+                if "Диск не справляется" in q7: score += 1
+                if "Сменить DNS" in q8: score += 1
+                if "Шлюз" in q9: score += 1
+                if "Лимит" in q10: score += 1
+                
+                st.session_state['final_exam_score'] = score
+                st.session_state['final_exam_step'] += 1
+                st.rerun()
+
+    def slide_level_3():
+        st.header("Уровень 3: СТРЕСС-ТЕСТ 😱 (Soft Skills)")
+        with st.form("exam_l3"):
+            q11 = st.radio("В11. 17:55. Звонит CEO (принтер), висит 1С (все стоят).", ["Чиним 1С (P1)", "Помогаем CEO (VIP), эскалируем 1С коллегам", "Уходим домой"])
+            q12 = st.radio("В12. Удалили данные пользователя без бэкапа.", ["Молчать", "Валить на вирус", "Признаться и звать L3 (Fail Fast)"])
+            q13 = st.radio("В13. Пользователь матерится в чате.", ["Бан", "Сам дурак", "Эмпатия + Конструктив"])
+
+            if st.form_submit_button("Зафиксировать ответы"):
+                score = st.session_state.get('final_exam_score', 0)
+                if "Помогаем CEO" in q11: score += 1
+                if "Признаться" in q12: score += 1
+                if "Эмпатия" in q13: score += 1
+                
+                st.session_state['final_exam_score'] = score
+                st.session_state['final_exam_step'] += 1
+                st.rerun()
+
+    def slide_level_4():
+        st.header("Уровень 4: НИНДЗЯ 🥷 (Linux & SQL)")
+        with st.form("exam_l4"):
+            q14 = st.radio("В14. SELECT count(*) ... LIKE '%@gmail.com'", ["Список юзеров", "Количество юзеров", "Удаление"])
+            q15 = st.radio("В15. Где лежат логи в Linux?", ["/home/logs", "/var/log", "/etc/config"])
+            q16 = st.radio("В16. chmod 777 file.txt", ["Отлично (все доступно)", "Плохо (дыра в безопасности)", "Удаление"])
+
+            if st.form_submit_button("Финиш!"):
+                score = st.session_state.get('final_exam_score', 0)
+                if "Количество" in q14: score += 1
+                if "/var/log" in q15: score += 1
+                if "Плохо" in q16: score += 1
+                
+                st.session_state['final_exam_score'] = score
+                st.session_state['final_exam_step'] += 1
+                st.rerun()
+
+    def slide_results():
+        st.header("🏁 Результаты Экзамена")
+        score = st.session_state.get('final_exam_score', 0)
+        total = 16
+        percent = (score / total) * 100
+        
+        st.metric("Ваш результат", f"{score} / {total}", f"{percent:.0f}%")
+        
+        if score >= 12:
+            st.success("🎉 ПОЗДРАВЛЯЕМ! ВЫ ПРИНЯТЫ! (Offer Accepted)")
+            st.balloons()
+            if 8 not in st.session_state['current_level'] and st.session_state['current_level'] < 8:
+                 st.session_state['current_level'] = 8
+                 st.session_state['score'] += 5000
+                 st.session_state['needs_save'] = True
+        elif score >= 8:
+            st.warning("Неплохо, но нужно подтянуть базу. Вы приняты на испытательный срок.")
         else:
-            st.error("Неверный ответ. Функция должна возвращать значение.")
+            st.error("Пока рано. Перечитайте конспекты.")
+            
+        st.divider()
+        st.subheader("🎁 Ваш приз: Ultimate Knowledge Base")
+        st.write("Нажмите кнопку ниже, чтобы открыть шпаргалку.")
+        
+        if st.button("Открыть Базу Знаний 📂"):
+             st.session_state['final_exam_step'] += 1
+             st.rerun()
+
+    def slide_knowledge_base():
+        st.header("📚 ULTIMATE KNOWLEDGE BASE")
+        st.info("Скопируйте это себе. Это концентрат профессии.")
+        
+        with st.expander("Блок 1: Железо и ОС", expanded=True):
+            st.markdown("""
+            | Компонент | Симптомы | Диагностика |
+            |---|---|---|
+            | **CPU** | Тормозит, гудит | Task Manager > 99%. System Interrupts = драйвер. |
+            | **RAM** | Вылеты, 'Опаньки' | Если >90% -> Swap (медленно). |
+            | **HDD** | 100% Disk, треск | Срочно бэкап. |
+            | **BSOD** | Ребут, синий экран | Анализ дампов (BlueScreenView). |
+            """)
+            
+        with st.expander("Блок 2: Сети (OSI L1-L7)", expanded=True):
+            st.markdown("""
+            1. **L1 (Phys):** Кабель, лампа.
+            2. **L2 (Data):** MAC.
+            3. **L3 (Net):** IP (Ping, Tracert). 169.254 = нет DHCP.
+            4. **L7 (App):** HTTP.
+            
+            **Порты:** 21(FTP), 22(SSH), 53(DNS), 80/443(Web), 3389(RDP).
+            """)
+            
+        with st.expander("Блок 3: Веб (HTTP)", expanded=True):
+            st.markdown("""
+            **Коды:**
+            * 200 OK
+            * 400 Bad Req (Синтаксис)
+            * 401/403 (Нет прав)
+            * 404 Not Found
+            * 500 Server Error (Код)
+            * 502 Bad Gateway (Шлюз)
+            * 504 Timeout
+            """)
+            
+        with st.expander("Блок 4: Linux & SQL", expanded=True):
+            st.markdown("""
+            **Linux:** `ls -la`, `cd`, `cat`, `tail -f` (log), `grep` (поиск), `chmod` (права), `top` (proc).  
+            **Log:** `/var/log`.
+            
+            **SQL:**
+            `SELECT * FROM table WHERE id=1 LIMIT 1`
+            """)
+            
+        with st.expander("Блок 5: Soft Skills (Собеседование)", expanded=True):
+            st.markdown("""
+            *   **Ошибка:** Признай -> Исправь -> Систематизируй.
+            *   **VIP:** Приоритет VIP, делегируй рутину.
+            *   **Агрессия:** Эмпатия + Конструктив.
+            """)
+            
+        st.success("Удачи на работе! Вы прошли игру.")
+        if st.button("Вернуться в начало"):
+            st.session_state['final_exam_step'] = 0
+            st.rerun()
+
+    slides = [slide_start, slide_level_1, slide_level_2, slide_level_3, slide_level_4, slide_results, slide_knowledge_base]
+    current_step = st.session_state.get('final_exam_step', 0)
+    
+    if 0 <= current_step < len(slides):
+        slides[current_step]()
+
+    # Navigation buttons (mostly handled by forms, but for start/intro)
+    if current_step == 0:
+         if st.button("Начать Экзамен ➡"):
+            st.session_state['final_exam_step'] += 1
+            st.rerun()
 
 # === Маршрутизация ===
 if selection == "Профиль":
@@ -1207,5 +1808,9 @@ elif selection == "Модуль 3: Сети":
     show_module_3()
 elif selection == "Модуль 4: Веб":
     show_module_4()
-elif selection == "Финальный экзамен":
+elif selection == "Модуль 5: SQL & Logs":
+    show_module_5()
+elif selection == "Модуль 6: Финальный Босс (Simulation)":
+    show_module_6()
+elif selection == "Итоговый Экзамен (Grand Final)":
     show_final_exam()
